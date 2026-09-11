@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A menu item (burger, side, drink, etc.)",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Name of the product" },
+        "description": { "type": "string", "description": "Short description" },
+        "price": { "type": "number", "description": "Price in BRL" },
+        "image": { "type": "string", "description": "URL of the product image" },
+        "category": { "type": "string", "description": "ID of the category" },
+        "available": { "type": "boolean", "description": "Whether the item is currently available" },
+        "badge": { "type": "string", "description": "Optional promotional badge text" },
+        "badgeType": { "type": "string", "enum": ["mais-pedido", "frango-catupiry", "linguica", "panko", "cheddar", "duplo", "vegano", "chef", "none"] }
+      },
+      "required": ["title", "price", "image", "category", "available"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Menu category",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "icon": { "type": "string", "description": "Material icon name" }
+      },
+      "required": ["name", "icon"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order for the kitchen",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "items": { "type": "array", "description": "List of items in the order" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "preparing", "ready", "delivered", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["delivery", "pickup"] },
+        "address": { "type": "string" },
+        "paymentMethod": { "type": "string" }
+      },
+      "required": ["items", "total", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "products": {
+      "schema": "Product",
+      "description": "Collection of all menu products"
+    },
+    "categories": {
+      "schema": "Category",
+      "description": "Menu categories"
+    },
+    "orders": {
+      "schema": "Order",
+      "description": "Incoming orders for the kitchen"
+    }
+  }
+}

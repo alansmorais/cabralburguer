@@ -1,0 +1,6 @@
+{
+  "name": "Cabral Burguer - Admin & Kitchen",
+  "description": "Sistema completo de hamburgueria com menu digital, painel administrativo e monitoramento de cozinha com impressão de pedidos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
