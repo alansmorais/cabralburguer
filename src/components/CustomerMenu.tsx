@@ -12,6 +12,7 @@ import CustomizeModal from './CustomizeModal';
 import HistoryModal from './HistoryModal';
 import CartDrawer from './CartDrawer';
 import UpsellModal from './UpsellModal';
+import OrderTracker from './OrderTracker';
 
 export default function CustomerMenu() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +30,27 @@ export default function CustomerMenu() {
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const [upsellParentItemName, setUpsellParentItemName] = useState('');
   const [customizeProduct, setCustomizeProduct] = useState<Product | null>(null);
+
+  const [trackingOrderId, setTrackingOrderId] = useState<string | null>(() => {
+    return localStorage.getItem('cabral_tracking_order_id');
+  });
+  const [isTrackerOpen, setIsTrackerOpen] = useState(false);
+
+  // Auto open tracker on load if there's an active tracking ID
+  useEffect(() => {
+    if (trackingOrderId) {
+      setIsTrackerOpen(true);
+    }
+  }, []);
+
+  // Save/remove active order id to/from localStorage
+  useEffect(() => {
+    if (trackingOrderId) {
+      localStorage.setItem('cabral_tracking_order_id', trackingOrderId);
+    } else {
+      localStorage.removeItem('cabral_tracking_order_id');
+    }
+  }, [trackingOrderId]);
 
   // Fetch products and categories from Firebase
   useEffect(() => {
@@ -212,11 +234,12 @@ export default function CustomerMenu() {
         createdAt: serverTimestamp(),
       };
       
-      await addDoc(collection(db, 'orders'), orderData);
+      const docRef = await addDoc(collection(db, 'orders'), orderData);
       
       setCart([]);
       setIsCartOpen(false);
-      alert('Pedido enviado para a cozinha! Acompanhe via WhatsApp.');
+      setTrackingOrderId(docRef.id);
+      setIsTrackerOpen(true);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'orders');
     }
@@ -232,6 +255,8 @@ export default function CustomerMenu() {
         activeCategory={activeCategory}
         onCategorySelect={setActiveCategory}
         onHistoryClick={() => setIsHistoryOpen(true)}
+        trackingOrderId={trackingOrderId}
+        onTrackClick={() => setIsTrackerOpen(true)}
       />
 
       <Hero onHistoryClick={() => setIsHistoryOpen(true)} />
@@ -470,6 +495,13 @@ export default function CustomerMenu() {
         onAddUpsellItem={handleAddUpsellItem}
         addedItemName={upsellParentItemName}
       />
+
+      {isTrackerOpen && trackingOrderId && (
+        <OrderTracker
+          orderId={trackingOrderId}
+          onClose={() => setIsTrackerOpen(false)}
+        />
+      )}
     </div>
   );
 }

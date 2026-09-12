@@ -1,25 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, onSnapshot, query, orderBy, updateDoc, doc } from 'firebase/firestore';
-import { Clock, CheckCircle2, Printer, ChevronRight, Package, User } from 'lucide-react';
+import { collection, onSnapshot, query, orderBy, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { Clock, CheckCircle2, Printer, ChevronRight, Package, User, Bike, Star, ChevronDown } from 'lucide-react';
 
 export default function KitchenPanel() {
   const [orders, setOrders] = useState<any[]>([]);
+  const [motoboys, setMotoboys] = useState<any[]>([]);
+  const [dispatchingOrderId, setDispatchingOrderId] = useState<string | null>(null);
+  const isFirstLoadRef = useRef(true);
+  const printedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, (snapshot) => {
-      setOrders(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'orders'));
-
+    const qMotoboys = query(collection(db, 'motoboys'));
+    const unsub = onSnapshot(qMotoboys, (snapshot) => {
+      setMotoboys(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (error) => console.error('Error fetching motoboys in KitchenPanel:', error));
     return unsub;
   }, []);
 
-  const updateStatus = async (id: string, newStatus: string) => {
+  const handleDispatchOrder = async (orderId: string, motoboy: any) => {
     try {
-      await updateDoc(doc(db, 'orders', id), { status: newStatus });
+      await updateDoc(doc(db, 'orders', orderId), {
+        status: 'dispatched',
+        motoboy: {
+          name: motoboy.name,
+          phone: motoboy.phone,
+          vehicle: motoboy.vehicle
+        },
+        dispatchedAt: serverTimestamp()
+      });
+      setDispatchingOrderId(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `orders/${id}`);
+      handleFirestoreError(error, OperationType.UPDATE, `orders/${orderId}`);
     }
   };
 
@@ -54,7 +66,7 @@ export default function KitchenPanel() {
             <div>PEDIDO: #${order.id.slice(-4)}</div>
             <div>CLIENTE: ${order.customerName}</div>
             <div>TIPO: ${order.orderType === 'entrega' ? 'ENTREGA' : 'RETIRADA'}</div>
-            <div>DATA: ${new Date(order.createdAt?.toDate()).toLocaleString()}</div>
+            <div>DATA: ${order.createdAt ? new Date(order.createdAt?.toDate()).toLocaleString() : ''}</div>
           </div>
           <div class="items">${itemsHtml}</div>
           <div class="total">TOTAL: R$ ${order.total.toFixed(2)}</div>
@@ -65,11 +77,49 @@ export default function KitchenPanel() {
     printWindow.document.close();
   };
 
+  useEffect(() => {
+    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const loadedOrders = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      setOrders(loadedOrders);
+
+      if (isFirstLoadRef.current) {
+        // On first load, mark all existing pending orders as already printed to avoid browser spam
+        loadedOrders.forEach((order) => {
+          if (order.status === 'pending') {
+            printedRef.current.add(order.id);
+          }
+        });
+        isFirstLoadRef.current = false;
+      } else {
+        // On subsequent updates, any NEW pending order triggers handlePrint automatically
+        loadedOrders.forEach((order) => {
+          if (order.status === 'pending' && !printedRef.current.has(order.id)) {
+            printedRef.current.add(order.id);
+            handlePrint(order);
+          }
+        });
+      }
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'orders'));
+
+    return unsub;
+  }, []);
+
+  const updateStatus = async (id: string, newStatus: string) => {
+    try {
+      await updateDoc(doc(db, 'orders', id), { status: newStatus });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `orders/${id}`);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30';
-      case 'preparing': return 'bg-blue-500/20 text-blue-500 border-blue-500/30';
-      case 'ready': return 'bg-green-500/20 text-green-500 border-green-500/30';
+      case 'preparing': return 'bg-brand-primary/20 text-brand-primary border-brand-primary/30';
+      case 'ready': return 'bg-blue-500/20 text-blue-500 border-blue-500/30';
+      case 'dispatched': return 'bg-purple-500/20 text-purple-500 border-purple-500/30';
+      case 'completed': return 'bg-green-500/20 text-green-500 border-green-500/30';
       default: return 'bg-brand-highest/20 text-brand-text-muted border-brand-highest/30';
     }
   };
@@ -82,7 +132,7 @@ export default function KitchenPanel() {
             <h1 className="font-display font-extrabold text-3xl flex items-center gap-3">
               <Package className="text-brand-primary" /> Painel da Cozinha
             </h1>
-            <p className="text-brand-text-muted text-sm mt-1">Gerenciamento de pedidos em tempo real.</p>
+            <p className="text-brand-text-muted text-sm mt-1">Gerenciamento de pedidos e despacho com motoboys.</p>
           </div>
           <div className="bg-brand-low px-4 py-2 rounded-xl border border-brand-highest/30 flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -107,7 +157,7 @@ export default function KitchenPanel() {
                   </div>
                 </div>
                 <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border uppercase tracking-wider ${getStatusColor(order.status)}`}>
-                  {order.status === 'pending' ? 'Novo' : order.status === 'preparing' ? 'Preparando' : 'Pronto'}
+                  {order.status === 'pending' ? 'Novo' : order.status === 'preparing' ? 'Preparando' : order.status === 'ready' ? 'Pronto' : order.status === 'dispatched' ? 'A Caminho' : 'Concluído'}
                 </span>
               </div>
 
@@ -134,16 +184,84 @@ export default function KitchenPanel() {
                     <p className="text-xs text-brand-text-secondary leading-normal">{order.notes}</p>
                   </div>
                 )}
+
+                {/* Motoboy Assigned details */}
+                {order.motoboy && (
+                  <div className="mt-4 bg-purple-500/10 p-2.5 rounded-lg border border-purple-500/20 text-xs">
+                    <div className="text-[10px] font-bold text-purple-400 uppercase tracking-widest flex items-center gap-1 mb-1">
+                      <Bike size={12} /> Entregador Designado:
+                    </div>
+                    <div className="font-bold text-brand-text-primary">{order.motoboy.name}</div>
+                    <div className="text-brand-text-muted text-[11px]">{order.motoboy.vehicle} • {order.motoboy.phone}</div>
+                  </div>
+                )}
+
+                {/* Customer Feedback section */}
+                {order.feedback && (
+                  <div className="mt-4 bg-green-500/10 p-3 rounded-lg border border-green-500/20 text-xs space-y-1">
+                    <div className="text-[10px] font-bold text-green-400 uppercase tracking-widest flex items-center gap-1">
+                      <Star size={12} className="fill-green-400 text-green-400" /> Avaliação do Cliente:
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star 
+                          key={i} 
+                          size={11} 
+                          className={i < order.feedback.rating ? 'fill-yellow-500 text-yellow-500' : 'text-brand-highest/40'} 
+                        />
+                      ))}
+                    </div>
+                    {order.feedback.comment && (
+                      <p className="italic text-brand-text-secondary mt-1 bg-brand-bg/45 p-1.5 rounded text-[11px]">
+                        "{order.feedback.comment}"
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="p-4 bg-brand-container rounded-b-2xl border-t border-brand-highest/20 space-y-3">
                 <div className="flex items-center justify-between text-xs text-brand-text-muted font-semibold">
                   <div className="flex items-center gap-1.5">
                     <Clock size={14} />
-                    {new Date(order.createdAt?.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {order.createdAt ? new Date(order.createdAt?.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                   </div>
                   <div className="capitalize">{order.orderType}</div>
                 </div>
+
+                {/* Inline Motoboy selector when dispatching is triggered */}
+                {dispatchingOrderId === order.id && (
+                  <div className="bg-brand-low p-3 rounded-xl border border-brand-primary/30 space-y-2 animate-fade-in">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-brand-primary">Selecione o Entregador:</div>
+                    <div className="max-h-[120px] overflow-y-auto space-y-1 pr-1 text-xs">
+                      {motoboys.map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => handleDispatchOrder(order.id, m)}
+                          className="w-full text-left bg-brand-bg/50 hover:bg-brand-primary hover:text-brand-bg p-2 rounded border border-brand-highest/10 transition-all font-semibold flex justify-between items-center"
+                        >
+                          <span>{m.name} ({m.vehicle.split(' ')[0]})</span>
+                          <span className="text-[9px] opacity-75">{m.phone}</span>
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => handleDispatchOrder(order.id, { name: 'Entregador Avulso', phone: '-', vehicle: 'Moto' })}
+                        className="w-full text-left bg-brand-bg/50 hover:bg-brand-primary hover:text-brand-bg p-2 rounded border border-brand-highest/10 transition-all font-semibold text-brand-text-muted italic"
+                      >
+                        + Entregador Avulso
+                      </button>
+                      {motoboys.length === 0 && (
+                        <p className="text-[10px] text-brand-text-muted italic p-1">Nenhum motoboy registrado. Você pode cadastrar em Admin &gt; Motoboys.</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setDispatchingOrderId(null)}
+                      className="w-full text-center text-[10px] font-bold uppercase tracking-wider text-brand-text-muted hover:text-brand-text-primary pt-1"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   <button 
@@ -167,7 +285,34 @@ export default function KitchenPanel() {
                       onClick={() => updateStatus(order.id, 'ready')}
                       className="flex-1 bg-brand-tertiary text-brand-bg py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:opacity-90 transition-all"
                     >
-                      <CheckCircle2 size={16} /> Finalizar
+                      <CheckCircle2 size={16} /> Pronto
+                    </button>
+                  )}
+
+                  {order.status === 'ready' && (
+                    order.orderType === 'entrega' ? (
+                      <button 
+                        onClick={() => setDispatchingOrderId(order.id)}
+                        className="flex-1 bg-purple-500 text-brand-bg py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-purple-600 transition-all"
+                      >
+                        <Bike size={16} /> Despachar
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => updateStatus(order.id, 'completed')}
+                        className="flex-1 bg-green-500 text-brand-bg py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-green-600 transition-all"
+                      >
+                        <CheckCircle2 size={16} /> Retirado
+                      </button>
+                    )
+                  )}
+
+                  {order.status === 'dispatched' && (
+                    <button 
+                      onClick={() => updateStatus(order.id, 'completed')}
+                      className="flex-1 bg-green-500 text-brand-bg py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-green-600 transition-all"
+                    >
+                      <CheckCircle2 size={16} /> Entregue
                     </button>
                   )}
                 </div>

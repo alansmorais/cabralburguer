@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ShoppingBag, User, MapPin, Clock, MessageSquare, Menu, X, Info, Flame, History } from 'lucide-react';
+import { Search, ShoppingBag, User, MapPin, Clock, MessageSquare, Menu, X, Info, Flame, History, Bike } from 'lucide-react';
 import { CATEGORIES } from '../data';
 
 interface HeaderProps {
@@ -10,6 +10,8 @@ interface HeaderProps {
   activeCategory: string;
   onCategorySelect: (id: string) => void;
   onHistoryClick: () => void;
+  trackingOrderId?: string | null;
+  onTrackClick?: () => void;
 }
 
 export default function Header({
@@ -20,6 +22,8 @@ export default function Header({
   activeCategory,
   onCategorySelect,
   onHistoryClick,
+  trackingOrderId,
+  onTrackClick,
 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
@@ -111,6 +115,16 @@ export default function Header({
 
         {/* Controls: Search icon (mobile), Cart, History button, User badge */}
         <div className="flex items-center gap-2 sm:gap-4">
+          {trackingOrderId && onTrackClick && (
+            <button
+              onClick={onTrackClick}
+              className="flex items-center gap-1.5 text-xs text-brand-primary hover:text-brand-primary-light font-bold transition-all bg-brand-primary/10 hover:bg-brand-primary/20 border border-brand-primary/30 px-3.5 py-2 rounded-xl shadow-[0_0_12px_rgba(255,230,0,0.15)] animate-pulse"
+            >
+              <span className="w-2 h-2 bg-brand-primary rounded-full animate-ping"></span>
+              <span>Acompanhar Pedido</span>
+            </button>
+          )}
+
           <button
             onClick={onHistoryClick}
             className="hidden sm:flex items-center gap-1.5 text-xs text-brand-text-muted hover:text-brand-primary transition-colors bg-brand-highest/20 hover:bg-brand-highest/40 px-3 py-2 rounded-xl border border-brand-highest/30"
@@ -201,6 +215,19 @@ export default function Header({
           </div>
 
           <div className="flex flex-col gap-2.5">
+            {trackingOrderId && onTrackClick && (
+              <button
+                onClick={() => {
+                  onTrackClick();
+                  setMobileMenuOpen(false);
+                }}
+                className="flex items-center gap-2 text-xs font-bold text-brand-primary p-2 rounded-lg hover:bg-brand-low transition-all border border-brand-primary/20 animate-pulse"
+              >
+                <Bike size={14} className="text-brand-primary" />
+                <span>Acompanhar Meu Pedido</span>
+              </button>
+            )}
+
             <button
               onClick={() => {
                 onHistoryClick();

@@ -102,65 +102,12 @@ export default function CartDrawer({
 
     try {
       await onCheckout(orderData);
-      
-      let message = `🍔🔥 *NOVO PEDIDO - CABRAL BURGUER* 🔥🍔\n\n`;
-      message += `👤 *Cliente:* ${clientName}\n`;
-      if (clientPhone) {
-        message += `📞 *Telefone:* ${clientPhone}\n`;
-      }
-      message += `🛵 *Tipo:* ${orderType === 'entrega' ? '🏍️ Entrega' : '🏪 Retirada no Local'}\n\n`;
-
-      if (orderType === 'entrega') {
-        message += `📍 *Endereço de Entrega:*\n`;
-        message += `Rua: ${rua}, Nº ${numero}\n`;
-        message += `Bairro: ${bairro} - São Sebastião/SP\n\n`;
-      }
-
-      message += `📝 *Ítens do Pedido:*\n`;
-      cartItems.forEach((item, index) => {
-        const addons = item.addedOptions.map((o) => `+ ${o.name}`).join(', ');
-        const removals = item.removedIngredients.map((i) => `Sem ${i}`).join(', ');
-        message += `${item.quantity}x *${item.product.title}* (R$ ${item.product.price.toFixed(2).replace('.', ',')})\n`;
-        if (item.ponto) {
-          message += `  • Ponto: ${item.ponto}\n`;
-        }
-        if (addons) {
-          message += `  • Extras: ${addons}\n`;
-        }
-        if (removals) {
-          message += `  • Removido: ${removals}\n`;
-        }
-        message += `\n`;
-      });
-
-      if (notes.trim()) {
-        message += `💬 *Observações:* ${notes}\n\n`;
-      }
-
-      message += `💳 *Forma de Pagamento:* ${
-        paymentMethod === 'pix'
-          ? 'Pix (Desconto de 5% Aplicado! 🌟)'
-          : paymentMethod === 'credito'
-          ? 'Cartão de Crédito'
-          : paymentMethod === 'debito'
-          ? 'Cartão de Débito'
-          : `Dinheiro ${trocoPara ? `(Troco para: R$ ${trocoPara})` : '(Sem troco)'}`
-      }\n\n`;
-
-      message += `🧾 *Valores:*\n`;
-      message += `Subtotal: R$ ${getItemsSubtotal().toFixed(2).replace('.', ',')}\n`;
-      if (orderType === 'entrega') {
-        message += `Taxa de Entrega (${bairro}): R$ ${getDeliveryFee().toFixed(2).replace('.', ',')}\n`;
-      }
-      if (paymentMethod === 'pix') {
-        message += `Desconto Pix (5%): - R$ ${getPixDiscount().toFixed(2).replace('.', ',')}\n`;
-      }
-      message += `*Total Geral: R$ ${getTotal().toFixed(2).replace('.', ',')}*\n\n`;
-      message += `💡 _Obrigado pela preferência! Nosso tempo médio é de 40-45 minutos._`;
-
-      const encodedMessage = encodeURIComponent(message);
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=551221036706&text=${encodedMessage}`;
-      window.open(whatsappUrl, '_blank');
+      setClientName('');
+      setClientPhone('');
+      setRua('');
+      setNumero('');
+      setNotes('');
+      setTrocoPara('');
     } catch (err) {
       // Error handled by parent
     }
