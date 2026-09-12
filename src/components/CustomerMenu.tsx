@@ -60,6 +60,10 @@ export default function CustomerMenu() {
 
   // Fetch products and categories from Firebase
   useEffect(() => {
+    if (!db) {
+      console.warn('Firestore is not available. Using offline fallback mode.');
+      return;
+    }
     const qProducts = query(collection(db, 'products'));
     const unsubProducts = onSnapshot(qProducts, (snapshot) => {
       const prods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));

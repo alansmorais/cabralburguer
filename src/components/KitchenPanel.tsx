@@ -11,6 +11,7 @@ export default function KitchenPanel() {
   const printedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!db) return;
     const qMotoboys = query(collection(db, 'motoboys'));
     const unsub = onSnapshot(qMotoboys, (snapshot) => {
       setMotoboys(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -78,6 +79,7 @@ export default function KitchenPanel() {
   };
 
   useEffect(() => {
+    if (!db) return;
     const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
       const loadedOrders = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));

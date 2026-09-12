@@ -6,7 +6,7 @@ import { Plus, Edit2, Trash2, Check, X, Image as ImageIcon, Save, LogOut, Databa
 import { seedDatabase } from '../lib/seed';
 
 export default function AdminPanel() {
-  const [user, setUser] = useState(auth.currentUser);
+  const [user, setUser] = useState(auth ? auth.currentUser : null);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [loadingAdminCheck, setLoadingAdminCheck] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
@@ -17,6 +17,10 @@ export default function AdminPanel() {
   const [isSeeding, setIsSeeding] = useState(false);
 
   useEffect(() => {
+    if (!auth) {
+      setLoadingAdminCheck(false);
+      return;
+    }
     const unsub = auth.onAuthStateChanged(async (u) => {
       setUser(u);
       if (u) {
@@ -24,7 +28,7 @@ export default function AdminPanel() {
         try {
           if (u.email === 'alanpkmorais@gmail.com') {
             setIsAdminUser(true);
-          } else {
+          } else if (db) {
             const emailDocRef = doc(db, 'admin_emails', u.email || '');
             const emailDocSnap = await getDoc(emailDocRef);
             if (emailDocSnap.exists()) {
@@ -34,6 +38,8 @@ export default function AdminPanel() {
               const uidDocSnap = await getDoc(uidDocRef);
               setIsAdminUser(uidDocSnap.exists());
             }
+          } else {
+            setIsAdminUser(false);
           }
         } catch (error) {
           console.error('Error verifying admin permissions:', error);
@@ -50,7 +56,7 @@ export default function AdminPanel() {
   }, []);
 
   useEffect(() => {
-    if (!user || !isAdminUser) return;
+    if (!user || !isAdminUser || !db) return;
     
     const q = query(collection(db, 'products'));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -76,7 +82,7 @@ export default function AdminPanel() {
   const [currentAdminView, setCurrentAdminView] = useState<'menu' | 'admins' | 'motoboys'>('menu');
 
   useEffect(() => {
-    if (!user || !isAdminUser) return;
+    if (!user || !isAdminUser || !db) return;
     
     const qEmails = query(collection(db, 'admin_emails'));
     const unsub = onSnapshot(qEmails, (snapshot) => {
@@ -238,7 +244,7 @@ export default function AdminPanel() {
         <div className="text-center space-y-4">
           <p className="text-brand-text-primary">Você não tem permissão de administrador.</p>
           <p className="text-xs text-brand-text-muted">Solicite acesso ao administrador master do sistema.</p>
-          <button onClick={() => auth.signOut()} className="text-brand-primary font-bold underline">Sair da Conta</button>
+          <button onClick={() => auth?.signOut()} className="text-brand-primary font-bold underline">Sair da Conta</button>
         </div>
       </div>
     );
@@ -308,7 +314,7 @@ export default function AdminPanel() {
                 <Plus size={14} /> Novo Produto
               </button>
             )}
-            <button onClick={() => auth.signOut()} className="p-2 hover:bg-brand-low rounded-xl text-brand-text-muted" title="Sair">
+            <button onClick={() => auth?.signOut()} className="p-2 hover:bg-brand-low rounded-xl text-brand-text-muted" title="Sair">
               <LogOut size={16} />
             </button>
           </div>

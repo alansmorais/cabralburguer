@@ -18,6 +18,11 @@ export default function OrderTracker({ orderId, onClose }: OrderTrackerProps) {
 
   useEffect(() => {
     if (!orderId) return;
+    if (!db) {
+      console.warn('Firestore not available for tracking. Loading offline fallback.');
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     const unsub = onSnapshot(doc(db, 'orders', orderId), (snapshot) => {

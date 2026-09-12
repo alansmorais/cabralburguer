@@ -1,14 +1,35 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+let app: any;
+let db: any = null;
+let auth: any = null;
 
-export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+try {
+  if (firebaseConfig && firebaseConfig.projectId) {
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    const dbId = (firebaseConfig as any).firestoreDatabaseId;
+    db = getFirestore(app, dbId || undefined);
+    auth = getAuth(app);
+  } else {
+    console.warn('Firebase configuration is empty or invalid. Running in offline fallback mode.');
+  }
+} catch (error) {
+  console.error('Failed to initialize Firebase SDK:', error);
+}
+
+export { db, auth };
+export const googleProvider = auth ? new GoogleAuthProvider() : null;
+
+export const signInWithGoogle = () => {
+  if (!auth) {
+    alert('Autenticação indisponível no momento.');
+    return Promise.reject(new Error('Auth not initialized'));
+  }
+  return signInWithPopup(auth, googleProvider!);
+};
 
 export enum OperationType {
   CREATE = 'create',
@@ -40,12 +61,12 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData?.map(provider => ({
         providerId: provider.providerId,
         email: provider.email,
       })) || []
