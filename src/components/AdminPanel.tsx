@@ -55,7 +55,13 @@ export default function AdminPanel() {
     const q = query(collection(db, 'products'));
     const unsub = onSnapshot(q, (snapshot) => {
       setProducts(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'products'));
+    }, (error) => {
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'products');
+      } catch (err) {
+        console.error('AdminPanel list products error:', err);
+      }
+    });
 
     const qCats = query(collection(db, 'categories'));
     onSnapshot(qCats, (snapshot) => {

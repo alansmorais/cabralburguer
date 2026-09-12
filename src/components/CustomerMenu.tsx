@@ -19,8 +19,13 @@ export default function CustomerMenu() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<{id: string, name: string, icon: string}[]>([]);
   const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = safeStorage.getItem('cabral_cart');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = safeStorage.getItem('cabral_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error('Failed to parse saved cart JSON', e);
+      return [];
+    }
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,13 +64,25 @@ export default function CustomerMenu() {
     const unsubProducts = onSnapshot(qProducts, (snapshot) => {
       const prods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
       setProducts(prods);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'products'));
+    }, (error) => {
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'products');
+      } catch (err) {
+        console.warn('Firestore listing products failed, falling back to local static PRODUCTS:', err);
+      }
+    });
 
     const qCategories = query(collection(db, 'categories'));
     const unsubCategories = onSnapshot(qCategories, (snapshot) => {
       const cats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       setCategories(cats);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'categories'));
+    }, (error) => {
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'categories');
+      } catch (err) {
+        console.warn('Firestore listing categories failed, falling back to local static CATEGORIES:', err);
+      }
+    });
 
     return () => {
       unsubProducts();

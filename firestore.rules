@@ -41,7 +41,8 @@ service cloud.firestore {
 
     // Orders
     match /orders/{orderId} {
-      allow read: if isAdmin();
+      allow get: if true; // Customers can track their own order with its ID
+      allow list: if isAdmin(); // Only admins can see all orders
       allow create: if true; // Customers can create orders
       allow update: if isAdmin(); // Kitchen/Admin updates status
     }

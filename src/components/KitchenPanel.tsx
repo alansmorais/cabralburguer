@@ -100,7 +100,13 @@ export default function KitchenPanel() {
           }
         });
       }
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'orders'));
+    }, (error) => {
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'orders');
+      } catch (err) {
+        console.error('KitchenPanel list orders error:', err);
+      }
+    });
 
     return unsub;
   }, []);
