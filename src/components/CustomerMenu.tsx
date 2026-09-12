@@ -13,12 +13,13 @@ import HistoryModal from './HistoryModal';
 import CartDrawer from './CartDrawer';
 import UpsellModal from './UpsellModal';
 import OrderTracker from './OrderTracker';
+import { safeStorage } from '../lib/storage';
 
 export default function CustomerMenu() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<{id: string, name: string, icon: string}[]>([]);
   const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('cabral_cart');
+    const saved = safeStorage.getItem('cabral_cart');
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -32,7 +33,7 @@ export default function CustomerMenu() {
   const [customizeProduct, setCustomizeProduct] = useState<Product | null>(null);
 
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(() => {
-    return localStorage.getItem('cabral_tracking_order_id');
+    return safeStorage.getItem('cabral_tracking_order_id');
   });
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
 
@@ -46,9 +47,9 @@ export default function CustomerMenu() {
   // Save/remove active order id to/from localStorage
   useEffect(() => {
     if (trackingOrderId) {
-      localStorage.setItem('cabral_tracking_order_id', trackingOrderId);
+      safeStorage.setItem('cabral_tracking_order_id', trackingOrderId);
     } else {
-      localStorage.removeItem('cabral_tracking_order_id');
+      safeStorage.removeItem('cabral_tracking_order_id');
     }
   }, [trackingOrderId]);
 
@@ -74,7 +75,7 @@ export default function CustomerMenu() {
 
   // Persist cart to localStorage
   useEffect(() => {
-    localStorage.setItem('cabral_cart', JSON.stringify(cart));
+    safeStorage.setItem('cabral_cart', JSON.stringify(cart));
   }, [cart]);
 
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
